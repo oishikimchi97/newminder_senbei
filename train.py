@@ -2,6 +2,9 @@ import torch
 from torch.utils.data import DataLoader
 from data import SegmentationDataset
 from model import DownconvUnet
+from torch.optim.swa_utils import AveragedModel, SWALR
+from torch.optim.lr_scheduler import CosineAnnealingLR
+
 
 SMOOTH = 1e-6
 
@@ -55,8 +58,10 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=8, shuffle=True)
 
     my_model = DownconvUnet(in_channel=3, seg_classes=1, cls_classes=2)
+    avg_model = AveragedModel(my_model)
 
     my_model.to(device)
+    avg_model.to(device)
 
     # Segmentation train
 
@@ -64,7 +69,7 @@ def main():
         print("-" * 5 + "Segmentation training start" + "-" * 5)
 
         my_model.mode = 1
-        seg_num_epochs = 20
+        num_epochs = 20
 
         train_loss = 0.
         train_iou = 0.
@@ -78,10 +83,13 @@ def main():
 
         params = [p for p in my_model.parameters() if p.requires_grad]
 
-        optimizer = torch.optim.Adam(params, lr=0.005)
+        optimizer = torch.optim.Adam(params, lr=0.01)
+        scheduler = CosineAnnealingLR(optimizer, T_max=100)
         bce = torch.nn.BCELoss(weight=[0.1, 1])
+        swa_start = int(num_epochs * 0.75)
+        swa_scheduler = SWALR(optimizer, swa_lr=0.005)
 
-        for epoch in range(seg_num_epochs):
+        for epoch in range(num_epochs):
             for seg_x, seg_y in train_loader:
                 pred_y = my_model(seg_x)
 
@@ -118,14 +126,21 @@ def main():
             print(f"train_loss {train_loss}, train_iou: {train_iou}, train_accuracy: {train_acc}")
             print(f"val_loss {val_loss}, val_iou: {val_iou}, val_accuracy: {val_acc}")
 
+            if epoch > swa_start:
+                print("Stochastic average start")
+                avg_model.update_parameters(my_model)
+                swa_scheduler.step()
+            else:
+                scheduler.step()
+
         print("Segmentation train completed")
 
-        # Classification train #TODO: detached encoder model and train separately
+        # Classification train
 
         if classification_train:
             print("-" * 5 + "Segmentation training start" + "-" * 5)
 
-            cls_num_epochs = 20
+            num_epchos = 20
             my_model.mode = 2
 
             train_loss = 0.
@@ -138,10 +153,13 @@ def main():
 
             params = [p for p in my_model.parameters() if p.requires_grad]
 
-            optimizer = torch.optim.Adam(params, lr=0.005)
+            optimizer = torch.optim.Adam(params, lr=0.01)
+            scheduler = CosineAnnealingLR(optimizer, T_max=100)
             bce = torch.nn.BCELoss(weight=[1, 1])
+            swa_start = int(num_epochs * 0.75)
+            swa_scheduler = SWALR(optimizer, swa_lr=0.005)
 
-            for epoch in range(cls_num_epochs):
+            for epoch in range(num_epchos):
                 for cls_x, cls_y in train_loader:
                     pred_y = my_model(cls_x)
 
@@ -177,7 +195,13 @@ def main():
 
             print("Classification train completed")
 
-        #TODO: save weights method
+            if epoch > swa_start:
+                print("Stochastic average start")
+                avg_model.update_parameters(my_model)
+                swa_scheduler.step()
+            else:
+                scheduler.step()
+
         #TODO: save results by writing output.txt
         #TODO: make logger and maintain with logger class
 
