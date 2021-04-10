@@ -5,8 +5,6 @@ import glob
 from PIL import Image
 
 
-# TODO: Add ClassificiationDataset Class
-
 class SegmentationDataset(torch.utils.data.Dataset):
     'Generates data for Keras'
 
