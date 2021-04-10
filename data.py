@@ -25,7 +25,7 @@ class SegmentationDataset(torch.utils.data.Dataset):
         self.entries = None
         self.augment = albm.Compose([
             albm.GaussNoise(p=0.3),
-            albm.RandomBrightness(limit=0.1, p=0.3),
+            albm.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.3),
             albm.ToFloat(max_value=1)
         ], p=1)
 
@@ -76,3 +76,61 @@ class SegmentationDataset(torch.utils.data.Dataset):
 
         return np.uint8(X), np.uint8(y)
 
+class ClassifiCaitionDataset(torch.utils.data.Dataset):
+    'Generates data for Keras'
+
+    def __init__(self,  ok_dir, ng_dir, resize=(256, 192), n_channels=3, classes=1, train=False):
+        'Initialization'
+
+        self.ok_paths = glob.glob(ok_dir + '/*')
+        self.ng_paths = glob.glob(ng_dir + '/*')
+        self.img_paths = self.ok_paths + self.ng_paths
+        self.ok_idxes = list(range(len(self.ok_paths)))
+        self.ng_idxes = list(range(len(self.ok_paths), len(self.img_paths)))
+
+        self.resize = resize
+
+        self.n_channels = n_channels
+        self.classes = classes
+        self.train = train
+        self.entries = None
+        self.augment = albm.Compose([
+            albm.GaussNoise(p=0.3),
+            albm.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.3),
+            albm.ToFloat(max_value=1)
+        ], p=1)
+
+    def __len__(self):
+        'Denotes the number of batches per epoch'
+        return len(self.img_paths)
+
+    def __getitem__(self, index):
+        'Generate one batch of data'
+        # Generate indexes of the batch
+
+        # Generate data
+        X, y = self.data_generation(index)
+
+        if self.train is False:
+            return X, y
+        else:
+            augmented = self.augment(image=X)
+            X = augmented['image']
+
+            return np.array(X), y
+
+    def data_generation(self, index):
+        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
+        img_path = self.img_paths[index]
+        img = Image.open(img_path)
+        if self.resize:
+            img = img.resize(self.resize)
+
+        img = np.array(img)
+
+        if len(img.shape) == 2:
+            img = np.repeat(img[..., None], 3, 2)
+
+        X = img
+        y = 0. if index in self.ng_idxes else 1
+        return np.uint8(X), y

@@ -6,6 +6,8 @@ import segmentation_models_pytorch as smp
 class ConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, padding=0, bias=False, activation=True,
                  batch_norm=True):
+        super().__init__()
+
         self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride,
                                 padding=padding, bias=bias)
         self.batch = nn.BatchNorm2d
@@ -22,6 +24,8 @@ class ConvBlock(nn.Module):
 
 class ResBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
+        super().__init__()
+
         self.conv1 = ConvBlock(in_channels, out_channels, kernel_size=3, stride=1, activation=True, batch_norm=True)
         self.conv2 = ConvBlock(in_channels, out_channels, kernel_size=3, stride=1, activation=False, batch_norm=True)
 
@@ -34,6 +38,8 @@ class ResBlock(nn.Module):
 
 class DownConv(nn.Module):
     def __init__(self, input_channel, input_size, output_size):
+        super().__init__()
+
         self.conv1 = ConvBlock(input_channel, 16, 7, 1, activation=True, batch_norm=False)
         self.conv2 = ConvBlock(16, 16, 7, 1, activation=True, batch_norm=True)
         self.resblock1 = ResBlock(16, 16)
@@ -62,12 +68,17 @@ class DownConv(nn.Module):
 
 
 class Flatten(nn.Module):
+    def __init__(self):
+        super().__init__()
+
     def forward(self, x):
         return x.view(x.shape[0], -1)
 
 
 class DownconvUnet(nn.Module):
     def __init__(self, in_channel=3, seg_classes=1, cls_classes=2, mode=0):
+        super().__init__()
+
         self.downconv = DownConv(3, input_size=(1024, 1024), output_size=(256, 256))
         self.unet = smp.UnetPlusPlus(
             encoder_name="timm-efficientnet-b2",
