@@ -3,3 +3,4 @@ Pillow
 numpy
 mlflow == 1.15.0
 albumentations==0.5.2
+segmentation-models-pytorch==0.1.3
