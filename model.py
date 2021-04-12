@@ -35,7 +35,6 @@ class ResBlock(nn.Module):
         y = torch.sum([x, y])
         return y
 
-
 class DownConv(nn.Module):
     def __init__(self, input_channel, input_size, output_size):
         super().__init__()
@@ -137,3 +136,4 @@ class DownconvUnet(nn.Module):
         elif self.mode == 2:
             return cls_y
 
+”

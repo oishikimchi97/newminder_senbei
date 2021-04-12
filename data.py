@@ -4,6 +4,7 @@ import albumentations as albm
 import glob
 from PIL import Image
 
+# TODO: Think over about the data augmentation method
 
 class SegmentationDataset(torch.utils.data.Dataset):
     'Generates data for Keras'
@@ -100,7 +101,7 @@ class ClassifiCaitionDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         'Denotes the number of batches per epoch'
-        return len(self.img_paths)
+        return len(self.img paths)
 
     def __getitem__(self, index):
         'Generate one batch of data'
