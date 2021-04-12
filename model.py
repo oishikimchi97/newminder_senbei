@@ -135,5 +135,3 @@ class DownconvUnet(nn.Module):
             return seg_y
         elif self.mode == 2:
             return cls_y
-
-”
