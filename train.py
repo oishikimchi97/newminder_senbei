@@ -1,4 +1,8 @@
+import argparse
+from typing import List
+
 import torch
+from torch import nn
 from torch.utils.data import DataLoader
 from data import SegmentationDataset
 from model import DownconvUnet
@@ -9,13 +13,27 @@ import mlflow
 SMOOTH = 1e-6
 
 
+class WeightedBCELoss(nn.Module):
+    def __init__(self, weight: List):
+        super().__init__()
+        self.weight = weight
+
+    def _weighted_binary_cross_entropy(self, input: torch.tensor, target: torch.tensor):
+        return self.weight[0] * target * torch.log(input) + \
+               self.weight[1] * (1 - target) * torch.log(1 - input)
+
+    def forward(self, input: torch.tensor, target: torch.tensor):
+        loss = self._weighted_binary_cross_entropy(input, target)
+        return loss
+
+
 class Params:
-    def __init__(self, batch_size=8, epochs=100, lr=0.01, swa_lr=0.005, seed=2021, weight=[1., 1.]):
+    def __init__(self, batch_size=8, num_epoch=100, lr=0.01, swa_lr=0.005, seed=2021, weight=[1., 1.]):
         self.swa_lr = swa_lr
         self.weight = weight
         self.lr = lr
         self.seed = seed
-        self.epochs = epochs
+        self.num_epoch = num_epoch
         self.batch_size = batch_size
 
 
@@ -64,6 +82,67 @@ class Metrics:  # for logging by each step
 
 
 def main():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--batch_size",
+        default=8,
+        type=int,
+        help="batch size of both segmentation and classification training"
+    )
+    parser.add_argument(
+        "--seg_epoch",
+        default=100,
+        type=int,
+        help="the number of epoch in the segmentation training"
+    )
+    parser.add_argument(
+        "--cls_epoch",
+        default=20,
+        type=int,
+        help="the number of epoch in the classification training"
+    )
+    parser.add_argument(
+        "--lr",
+        default=0.01,
+        type=float,
+        help="the learning rate of training"
+    )
+    parser.add_argument(
+        "--lr",
+        default=0.01,
+        type=float,
+        help="the learning rate of training"
+    )
+    parser.add_argument(
+        "--swa_lr",
+        default=0.005,
+        type=float,
+        help="the stochastic learning rate of training "
+    )
+    parser.add_argument(
+        "--seg_weight",
+        default=[0.1, 1],
+        type=list,
+        nargs='+',
+        help="the weight of Binary Cross Entropy in the segmentation learning"
+    )
+    parser.add_argument(
+        "--cls_weight",
+        default=[1, 1],
+        type=list,
+        nargs='+',
+        help="the weight of Binary Cross Entropy in the classification learning"
+    )
+    parser.add_argument(
+        "--seed",
+        default=2021,
+        type=int,
+        help="the random seed"
+    )
+
+    args = parser.parse_args()
+
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     segmentation_train = True
     classification_train = True
@@ -86,8 +165,8 @@ def main():
     avg_model.to(device)
 
     with mlflow.start_run() as run:
-        seg_args = Params(8, 100, 0.01, 0.005, 2021, [0.1, 1.])
-        cls_args = Params(8, 20, 0.01, 0.005, 2021, [1, 1.])
+        seg_args = Params(args.batch_size, args.seg_epoch, args.seg_lr, args.seed, args.seg_weight)
+        cls_args = Params(args.batch_size, args.cls_epoch, args.cls_lr, args.seed, args.cls_weight)
         mode_list = ["seg", "cls"]
         for mode in mode_list:
             for key, value in vars(seg_args).items():
@@ -113,11 +192,12 @@ def main():
 
             optimizer = torch.optim.Adam(my_model.parameters(), lr=seg_args.lr)
             scheduler = CosineAnnealingLR(optimizer, T_max=100)
-            bce = torch.nn.BCELoss(weight=seg_args.weight)
-            swa_start = int(seg_args.epochs * 0.75)
-            swa_scheduler = SWALR(optimizer, swa_lr=seg_args.swa_lr)
+            bce = WeightedBCELoss(weight=seg_args.weight)
+            swa_start = int(seg_args.num_epoch * 0.75)
+            swa_scheduler = SWALR(optimizer, anneal_strategy='linear', anneal_epochs=swa_start,
+                                  swa_lr=seg_args.swa_lr)
 
-            for epoch in range(seg_args.epochs):
+            for epoch in range(seg_args.num_epoch):
                 for batch_idx, (seg_x, seg_y) in enumerate(train_loader):
                     pred_y = my_model(seg_x)
 
@@ -147,7 +227,7 @@ def main():
                     loss = bce(pred_y, seg_y)
 
                     val_loss += loss.item()
-                    val_metrics.update(pred_y, seg_y, loss.item())
+                    val_metrics.update(pred_y, seg_y, val_loss)
                     val_iou += val_metrics.iou
                     val_acc += val_metrics.acc
 
@@ -161,10 +241,10 @@ def main():
 
                 print(f"Epoch {epoch + 1}:")
                 print("-" * 10)
-                print(f"train_loss {train_loss.data.item():.3f}, train_iou: {train_iou.data.item():.3f}, "
-                      f"train_accuracy: {train_acc.data.item():.3f}")
-                print(f"val_loss {val_loss.data.item():.3f}, val_iou: {val_iou.data.item():.3f}, "
-                      f"val_accuracy: {val_acc.data.item():.3f}")
+                print(f"train_loss {train_loss:.3f}, train_iou: {train_iou:.3f}, "
+                      f"train_accuracy: {train_acc:.3f}")
+                print(f"val_loss {val_loss:.3f}, val_iou: {val_iou:.3f}, "
+                      f"val_accuracy: {val_acc:.3f}")
 
                 if epoch > swa_start:
                     print("Stochastic average start")
@@ -196,11 +276,12 @@ def main():
 
                 optimizer = torch.optim.Adam(my_model.parameters(), lr=cls_args.lr)
                 scheduler = CosineAnnealingLR(optimizer, T_max=100)
-                bce = torch.nn.BCELoss(weight=cls_args.weight)
-                swa_start = int(cls_args.epochs * 0.75)
-                swa_scheduler = SWALR(optimizer, swa_lr=cls_args.swa_lr)
+                bce = WeightedBCELoss(weight=cls_args.weight)
+                swa_start = int(cls_args.num_epoch * 0.75)
+                swa_scheduler = SWALR(optimizer, anneal_strategy='linear', anneal_epochs=swa_start,
+                                      swa_lr=cls_args.swa_lr)
 
-                for epoch in range(cls_args.num_epchos):
+                for epoch in range(cls_args.num_epoch):
                     for batch_idx, (cls_x, cls_y) in enumerate(train_loader):
                         pred_y = my_model(cls_x)
 
@@ -210,7 +291,7 @@ def main():
                         optimizer.step()
 
                         train_loss += loss.item()
-                        train_metrics.update(pred_y, cls_y, loss.item())
+                        train_metrics.update(pred_y, cls_y, train_loss)
                         train_acc += train_metrics.acc
 
                         step = epoch * len(train_loader) + batch_idx
@@ -219,7 +300,6 @@ def main():
 
                     train_loss /= len(train_loader)
                     train_acc /= len(train_loader)
-
 
                     my_model.eval()
 
@@ -241,8 +321,10 @@ def main():
 
                     print(f"Epoch {epoch + 1}:")
                     print("-" * 10)
-                    print(f"train_loss {train_loss:.3f}, train_iou: {train_iou:.3f}, train_accuracy: {train_acc:.3f}")
-                    print(f"val_loss {val_loss:.3f}, val_iou: {val_iou:.3f}, val_accuracy: {val_acc:.3f}")
+                    print(f"train_loss {train_loss:.3f}, train_iou: {train_iou:.3f}, "
+                          f"train_accuracy: {train_acc:.3f}")
+                    print(f"val_loss {val_loss:.3f}, val_iou: {val_iou:.3f}, "
+                          f"val_accuracy: {val_acc:.3f}")
 
                 print("Classification train completed")
 
@@ -255,3 +337,7 @@ def main():
     weight_path = "weights/donwconv_swa_weights.pth"
     torch.save(my_model.state_dict(), weight_path)
     print(f"model weight saved to {weight_path}")
+
+
+if __name__ == "__main__":
+    main()
