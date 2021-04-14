@@ -5,7 +5,7 @@ from typing import List
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-from data import SegmentationDataset, ClassificaitionDataset
+from data import SegmentationDataset, ClassificationDataset
 from model import DownconvUnet
 from torch.optim.swa_utils import AveragedModel, SWALR
 from torch.optim.lr_scheduler import CosineAnnealingLR
@@ -169,10 +169,10 @@ def main():
     seg_val_dataset = SegmentationDataset(img_dir=val_img_dir, mask_dir=val_mask_dir,
                                       n_channels=3, classes=1, train=False)
 
-    cls_train_dataset = ClassificaitionDataset(ok_dir=train_img_dir, ng_dir=train_ng_dir,
-                                        n_channels=3, classes=1, train=True)
-    cls_val_dataset = ClassificaitionDataset(ok_dir=val_img_dir, ng_dir=val_mask_dir,
-                                      n_channels=3, classes=1, train=False)
+    cls_train_dataset = ClassificationDataset(ok_dir=train_img_dir, ng_dir=train_ng_dir,
+                                              n_channels=3, classes=1, train=True)
+    cls_val_dataset = ClassificationDataset(ok_dir=val_img_dir, ng_dir=val_mask_dir,
+                                            n_channels=3, classes=1, train=False)
 
     seg_train_loader = DataLoader(seg_train_dataset, batch_size=8, shuffle=True)
     seg_val_loader = DataLoader(seg_val_dataset, batch_size=8, shuffle=True)
