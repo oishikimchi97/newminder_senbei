@@ -101,7 +101,7 @@ class ClassifiCaitionDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         'Denotes the number of batches per epoch'
-        return len(self.img paths)
+        return len(self.img_paths)
 
     def __getitem__(self, index):
         'Generate one batch of data'
