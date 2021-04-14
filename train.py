@@ -140,6 +140,18 @@ def main():
         type=int,
         help="the random seed"
     )
+    parser.add_argument(
+        "--train_dir",
+        default="/train_dir",
+        type=int,
+        help="the train data directory. it consists of the both ng and ok directorys, and they have img and mask folders."
+    )
+    parser.add_argument(
+        "--val_dir",
+        default="/val_dir",
+        type=int,
+        help="the validation data directory. it consists of the both ng and ok directorys, and they have img and mask folders."
+    )
 
     args = parser.parse_args()
 
@@ -147,8 +159,8 @@ def main():
     segmentation_train = True
     classification_train = True
 
-    train_dir = ''
-    val_dir = ''
+    train_dir = args.train_dir
+    val_dir = args.val_dir
 
     train_dataset = SegmentationDataset(img_dir=train_dir, mask_dir=train_dir,
                                         n_channels=3, classes=1, train=True)
