@@ -179,6 +179,7 @@ def main():
     seg_val_loader = DataLoader(seg_val_dataset, batch_size=8, shuffle=True)
     cls_train_loader = DataLoader(cls_train_dataset, batch_size=8, shuffle=True)
     cls_val_loader = DataLoader(cls_val_dataset, batch_size=8, shuffle=True)
+
     my_model = DownconvUnet(in_channel=3, seg_classes=1, cls_classes=2)
     avg_model = AveragedModel(my_model)
 
