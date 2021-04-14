@@ -156,22 +156,23 @@ def main():
 
     train_dir = Path(args.train_dir)
     val_dir = Path(args.val_dir)
-    train_img_dir = train_dir / "img"
-    train_mask_dir = train_dir / "mask"
-    train_ng_dir = train_dir / "ng"
 
-    val_img_dir = val_dir / "img"
-    val_mask_dir = val_dir / "mask"
-    val_ng_dir = val_dir / "ng"
+    train_img_dir = str(train_dir / "img")
+    train_mask_dir = str(train_dir / "mask")
+    train_ng_dir = str(train_dir / "ng")
+
+    val_img_dir = str(val_dir / "img")
+    val_mask_dir = str(val_dir / "mask")
+    val_ng_dir = str(val_dir / "ng")
 
     seg_train_dataset = SegmentationDataset(img_dir=train_img_dir, mask_dir=train_mask_dir,
-                                        n_channels=3, classes=1, train=True)
+                                            n_channels=3, classes=1, train=True)
     seg_val_dataset = SegmentationDataset(img_dir=val_img_dir, mask_dir=val_mask_dir,
-                                      n_channels=3, classes=1, train=False)
+                                          n_channels=3, classes=1, train=False)
 
     cls_train_dataset = ClassificationDataset(ok_dir=train_img_dir, ng_dir=train_ng_dir,
                                               n_channels=3, classes=1, train=True)
-    cls_val_dataset = ClassificationDataset(ok_dir=val_img_dir, ng_dir=val_mask_dir,
+    cls_val_dataset = ClassificationDataset(ok_dir=val_img_dir, ng_dir=val_ng_dir,
                                             n_channels=3, classes=1, train=False)
 
     seg_train_loader = DataLoader(seg_train_dataset, batch_size=8, shuffle=True)
