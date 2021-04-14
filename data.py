@@ -75,7 +75,7 @@ class SegmentationDataset(torch.utils.data.Dataset):
 
         return np.uint8(X), np.uint8(y)
 
-class ClassifiCaitionDataset(torch.utils.data.Dataset):
+class ClassificaitionDataset(torch.utils.data.Dataset):
     'Generates data for Keras'
 
     def __init__(self,  ok_dir, ng_dir, resize=(256, 192), n_channels=3, classes=1, train=False):

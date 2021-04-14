@@ -1,10 +1,11 @@
 import argparse
+from pathlib import Path
 from typing import List
 
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-from data import SegmentationDataset
+from data import SegmentationDataset, ClassificaitionDataset
 from model import DownconvUnet
 from torch.optim.swa_utils import AveragedModel, SWALR
 from torch.optim.lr_scheduler import CosineAnnealingLR
@@ -112,7 +113,7 @@ def main():
         "--swa_lr",
         default=0.005,
         type=float,
-        help="the stochastic learning rate of training "
+        help="the stochastic learning rate of training"
     )
     parser.add_argument(
         "--seg_weight",
@@ -153,17 +154,30 @@ def main():
     segmentation_train = True
     classification_train = True
 
-    train_dir = args.train_dir
-    val_dir = args.val_dir
+    train_dir = Path(args.train_dir)
+    val_dir = Path(args.val_dir)
+    train_img_dir = train_dir / "img"
+    train_mask_dir = train_dir / "mask"
+    train_ng_dir = train_dir / "ng"
 
-    train_dataset = SegmentationDataset(img_dir=train_dir, mask_dir=train_dir,
+    val_img_dir = val_dir / "img"
+    val_mask_dir = val_dir / "mask"
+    val_ng_dir = val_dir / "ng"
+
+    seg_train_dataset = SegmentationDataset(img_dir=train_img_dir, mask_dir=train_mask_dir,
                                         n_channels=3, classes=1, train=True)
-    val_dataset = SegmentationDataset(img_dir=val_dir, mask_dir=val_dir,
+    seg_val_dataset = SegmentationDataset(img_dir=val_img_dir, mask_dir=val_mask_dir,
                                       n_channels=3, classes=1, train=False)
 
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=True)
+    cls_train_dataset = ClassificaitionDataset(ok_dir=train_img_dir, ng_dir=train_ng_dir,
+                                        n_channels=3, classes=1, train=True)
+    cls_val_dataset = ClassificaitionDataset(ok_dir=val_img_dir, ng_dir=val_mask_dir,
+                                      n_channels=3, classes=1, train=False)
 
+    seg_train_loader = DataLoader(seg_train_dataset, batch_size=8, shuffle=True)
+    seg_val_loader = DataLoader(seg_val_dataset, batch_size=8, shuffle=True)
+    cls_train_loader = DataLoader(cls_train_dataset, batch_size=8, shuffle=True)
+    cls_val_loader = DataLoader(cls_val_dataset, batch_size=8, shuffle=True)
     my_model = DownconvUnet(in_channel=3, seg_classes=1, cls_classes=2)
     avg_model = AveragedModel(my_model)
 
@@ -204,7 +218,7 @@ def main():
                                   swa_lr=seg_args.swa_lr)
 
             for epoch in range(seg_args.num_epoch):
-                for batch_idx, (seg_x, seg_y) in enumerate(train_loader):
+                for batch_idx, (seg_x, seg_y) in enumerate(seg_train_loader):
                     pred_y = my_model(seg_x)
 
                     loss = bce(pred_y, seg_y)
@@ -217,17 +231,17 @@ def main():
                     train_iou += train_metrics.iou
                     train_acc += train_metrics.acc
 
-                    step = epoch * len(train_loader) + batch_idx
+                    step = epoch * len(seg_train_loader) + batch_idx
                     for metric, value in vars(train_metrics).items():
                         mlflow.log_metric(f"seg_train_{metric}", value, step=step)
 
-                train_loss /= len(train_loader)
-                train_iou /= len(train_loader)
-                train_acc /= len(train_loader)
+                train_loss /= len(seg_train_loader)
+                train_iou /= len(seg_train_loader)
+                train_acc /= len(seg_train_loader)
 
                 my_model.eval()
 
-                for batch_idx, (seg_x, seg_y) in enumerate(val_loader):
+                for batch_idx, (seg_x, seg_y) in enumerate(seg_val_loader):
                     pred_y = my_model(seg_x)
 
                     loss = bce(pred_y, seg_y)
@@ -237,13 +251,13 @@ def main():
                     val_iou += val_metrics.iou
                     val_acc += val_metrics.acc
 
-                    step = epoch * len(val_loader) + batch_idx
+                    step = epoch * len(seg_val_loader) + batch_idx
                     for metric, value in vars(val_metrics).items():
                         mlflow.log_metric(f"seg_val_{metric}", value, step=step)
 
-                val_loss /= len(val_loader)
-                val_iou /= len(val_loader)
-                val_acc /= len(val_loader)
+                val_loss /= len(seg_val_loader)
+                val_iou /= len(seg_val_loader)
+                val_acc /= len(seg_val_loader)
 
                 print(f"Epoch {epoch + 1}:")
                 print("-" * 10)
@@ -288,7 +302,7 @@ def main():
                                       swa_lr=cls_args.swa_lr)
 
                 for epoch in range(cls_args.num_epoch):
-                    for batch_idx, (cls_x, cls_y) in enumerate(train_loader):
+                    for batch_idx, (cls_x, cls_y) in enumerate(cls_train_loader):
                         pred_y = my_model(cls_x)
 
                         loss = bce(pred_y, cls_y)
@@ -300,16 +314,16 @@ def main():
                         train_metrics.update(pred_y, cls_y, train_loss)
                         train_acc += train_metrics.acc
 
-                        step = epoch * len(train_loader) + batch_idx
+                        step = epoch * len(seg_train_loader) + batch_idx
                         for metric, value in vars(train_metrics).items():
                             mlflow.log_metric(f"cls_train_{metric}", value, step=step)
 
-                    train_loss /= len(train_loader)
-                    train_acc /= len(train_loader)
+                    train_loss /= len(seg_train_loader)
+                    train_acc /= len(seg_train_loader)
 
                     my_model.eval()
 
-                    for batch_idx, (cls_x, cls_y) in enumerate(val_loader):
+                    for batch_idx, (cls_x, cls_y) in enumerate(cls_val_loader):
                         pred_y = my_model(cls_x)
 
                         loss = bce(pred_y, cls_y)
@@ -318,12 +332,12 @@ def main():
                         val_metrics.update(pred_y, cls_y, loss.item())
                         val_acc += val_metrics.acc
 
-                        step = epoch * len(train_loader) + batch_idx
+                        step = epoch * len(seg_train_loader) + batch_idx
                         for metric, value in vars(val_metrics).items():
                             mlflow.log_metric(f"cls_train_{metric}", value, step=step)
 
-                    val_loss /= len(val_loader)
-                    val_acc /= len(val_loader)
+                    val_loss /= len(seg_val_loader)
+                    val_acc /= len(seg_val_loader)
 
                     print(f"Epoch {epoch + 1}:")
                     print("-" * 10)
