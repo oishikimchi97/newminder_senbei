@@ -109,12 +109,6 @@ def main():
         help="the learning rate of training"
     )
     parser.add_argument(
-        "--lr",
-        default=0.01,
-        type=float,
-        help="the learning rate of training"
-    )
-    parser.add_argument(
         "--swa_lr",
         default=0.005,
         type=float,
