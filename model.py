@@ -45,7 +45,7 @@ class DownConv(nn.Module):
         self.conv3 = ConvBlock(16, 16, 3, 1, activation=False, batch_norm=True)
         self.conv4 = ConvBlock(16, 3, 7, 1, activation=False, batch_norm=False)
 
-        self.scale_factor = [output_size[i] / input_size[i] for i in range(2)]
+        self.scale_factor = tuple(output_size[i] / input_size[i] for i in range(2))
         self.binear_resizer = nn.Upsample(scale_factor=self.scale_factor, mode='bilinear')
 
     def forward(self, x):
@@ -87,13 +87,15 @@ class DownconvUnet(nn.Module):
         )
         self.encoder = self.unet.encoder
         self.decoder = self.unet.decoder
-        encoder_channel = None  # FIXME
+        encoder_channel = 352
 
         self.classifier = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
             Flatten(),
             nn.Dropout(p=0.2),
-            nn.Linear(encoder_channel, cls_classes)
+            nn.Linear(encoder_channel, int( encoder_channel / 2)),
+            nn.Dropout(p=0.2),
+            nn.Linear(int( encoder_channel / 2), cls_classes)
         )
 
         self._mode = mode  # 0: seg, cls mode, 2: seg mode, 3: cls mode
