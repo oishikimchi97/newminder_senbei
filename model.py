@@ -30,7 +30,7 @@ class ResBlock(nn.Module):
     def forward(self, x):
         y = self.conv1(x)
         y = self.conv2(y)
-        y = torch.sum([x, y])
+        y = torch.add(x, y)
         return y
 
 
@@ -55,12 +55,12 @@ class DownConv(nn.Module):
         res = self.resblock1(y1)
         res = self.conv3(res)
 
-        y1 = torch.sum([res, y1])
+        y1 = torch.add(res, y1)
         y1 = self.conv4(y1)
 
         y2 = self.binear_resizer(x)
 
-        output = torch.sum([y1, y2])
+        output = torch.add(y1, y2)
 
         return output
 

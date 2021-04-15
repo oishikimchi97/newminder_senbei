@@ -223,10 +223,11 @@ def main():
                 for batch_idx, batch in enumerate(seg_train_loader):
                     batch = tuple(t.to(device) for t in batch)
                     seg_x, seg_y = batch
-                    pred_y = my_model(seg_x)
 
-                    loss = bce(pred_y, seg_y)
                     optimizer.zero_grad()
+
+                    pred_y = my_model(seg_x)
+                    loss = bce(pred_y, seg_y)
                     loss.backward()
                     optimizer.step()
 
