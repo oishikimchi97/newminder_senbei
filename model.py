@@ -77,7 +77,7 @@ class DownconvUnet(nn.Module):
     def __init__(self, in_channel=3, seg_classes=1, cls_classes=2, mode=0):
         super().__init__()
 
-        self.downconv = DownConv(3, input_size=(1024, 1024), output_size=(256, 256))
+        self.downconv = DownConv(3, input_size=(2448, 2048), output_size=(256, 256))
         self.unet = smp.UnetPlusPlus(
             encoder_name="timm-efficientnet-b2",
             encoder_weights="noisy-student",
@@ -105,11 +105,16 @@ class DownconvUnet(nn.Module):
 
     @mode.setter
     def mode(self, mode):
+        mode2name = {
+            0: "ALL",
+            1: "SEGMENTATION",
+            2: "CLASSIFICATION",
+        }
         if mode in [0, 1, 2]:
             self._mode = mode
-            print(f"the mode is now {self._mode}")
+            print(f"{mode2name[mode]} mode is activated")
         else:
-            raise ValueError("mode must be the one of 0 (all) , 1 (seg) , 2 (cls)")
+            raise ValueError("mode must be the one of 0 (ALL) , 1 (SEGMENTATION) , 2 (CLASSIFICATION)")
 
     def forward(self, x):
         """
