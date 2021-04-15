@@ -157,22 +157,22 @@ def main():
     train_dir = Path(args.train_dir)
     val_dir = Path(args.val_dir)
 
-    train_img_dir = str(train_dir / "img")
+    train_ok_dir = str(train_dir / "ok")
     train_mask_dir = str(train_dir / "mask")
     train_ng_dir = str(train_dir / "ng")
 
-    val_img_dir = str(val_dir / "img")
+    val_ok_dir = str(val_dir / "ok")
     val_mask_dir = str(val_dir / "mask")
     val_ng_dir = str(val_dir / "ng")
 
-    seg_train_dataset = SegmentationDataset(img_dir=train_img_dir, mask_dir=train_mask_dir,
+    seg_train_dataset = SegmentationDataset(img_dir=train_ng_dir, mask_dir=train_mask_dir,
                                             n_channels=3, classes=1, train=True)
-    seg_val_dataset = SegmentationDataset(img_dir=val_img_dir, mask_dir=val_mask_dir,
+    seg_val_dataset = SegmentationDataset(img_dir=val_ng_dir, mask_dir=val_mask_dir,
                                           n_channels=3, classes=1, train=False)
 
-    cls_train_dataset = ClassificationDataset(ok_dir=train_img_dir, ng_dir=train_ng_dir,
+    cls_train_dataset = ClassificationDataset(ok_dir=train_ok_dir, ng_dir=train_ng_dir,
                                               n_channels=3, classes=1, train=True)
-    cls_val_dataset = ClassificationDataset(ok_dir=val_img_dir, ng_dir=val_ng_dir,
+    cls_val_dataset = ClassificationDataset(ok_dir=val_ok_dir, ng_dir=val_ng_dir,
                                             n_channels=3, classes=1, train=False)
 
     seg_train_loader = DataLoader(seg_train_dataset, batch_size=8, shuffle=True)
@@ -187,8 +187,8 @@ def main():
     avg_model.to(device)
 
     with mlflow.start_run() as run:
-        seg_args = Params(args.batch_size, args.seg_epoch, args.seg_lr, args.seed, args.seg_weight)
-        cls_args = Params(args.batch_size, args.cls_epoch, args.cls_lr, args.seed, args.cls_weight)
+        seg_args = Params(args.batch_size, args.seg_epoch, args.lr, args.seed, args.seg_weight)
+        cls_args = Params(args.batch_size, args.cls_epoch, args.lr, args.seed, args.cls_weight)
         mode_list = ["seg", "cls"]
         for mode in mode_list:
             for key, value in vars(seg_args).items():
