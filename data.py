@@ -9,7 +9,7 @@ from PIL import Image
 class SegmentationDataset(torch.utils.data.Dataset):
     'Generates data for Keras'
 
-    def __init__(self, img_dir, mask_dir, resize=(256, 192), n_channels=3, classes=1, train=False):
+    def __init__(self, img_dir, mask_dir, resize=None, n_channels=3, classes=1, train=False, first_channel=True):
         'Initialization'
         self.img_paths = glob.glob(img_dir + '/*')
 
@@ -17,8 +17,8 @@ class SegmentationDataset(torch.utils.data.Dataset):
         self.mask_dir = mask_dir
 
         self.resize = resize
-
         self.n_channels = n_channels
+        self.first_channel = first_channel
         self.classes = classes
         self.train = train
         self.entries = None
@@ -52,7 +52,7 @@ class SegmentationDataset(torch.utils.data.Dataset):
             return np.array(X), np.array(y) / 255
 
     def data_generation(self, img_path):
-        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
+        'Generates data containing batch_size samples'  # X : (n_samples, n_channels, *dim) if first_channel is True
         mask_path = img_path.replace(self.img_dir, self.mask_dir)
         # change file extension jpg to png
         mask_path = mask_path.replace(mask_path.split('.')[-1], 'png')
@@ -68,6 +68,8 @@ class SegmentationDataset(torch.utils.data.Dataset):
         if len(img.shape) == 2:
             img = np.repeat(img[..., None], 3, 2)
         mask = mask[..., np.newaxis]
+        if self.first_channel:
+            img = np.moveaxis(img, 2, 0)
 
         X = img
         y = mask
@@ -78,7 +80,7 @@ class SegmentationDataset(torch.utils.data.Dataset):
 class ClassificationDataset(torch.utils.data.Dataset):
     'Generates data for Keras'
 
-    def __init__(self,  ok_dir, ng_dir, resize=(256, 192), n_channels=3, classes=1, train=False):
+    def __init__(self,  ok_dir, ng_dir, resize=None, n_channels=3, classes=1, train=False, first_channel=True):
         'Initialization'
 
         self.ok_paths = glob.glob(ok_dir + '/*')
@@ -88,8 +90,8 @@ class ClassificationDataset(torch.utils.data.Dataset):
         self.ng_idxes = list(range(len(self.ok_paths), len(self.img_paths)))
 
         self.resize = resize
-
         self.n_channels = n_channels
+        self.first_channel = first_channel
         self.classes = classes
         self.train = train
         self.entries = None
@@ -119,7 +121,7 @@ class ClassificationDataset(torch.utils.data.Dataset):
             return np.array(X), y
 
     def data_generation(self, index):
-        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
+        'Generates data containing batch_size samples'  # X : (n_samples, n_channels, *dim) if first_channel is True
         img_path = self.img_paths[index]
         img = Image.open(img_path)
         if self.resize:
@@ -129,6 +131,8 @@ class ClassificationDataset(torch.utils.data.Dataset):
 
         if len(img.shape) == 2:
             img = np.repeat(img[..., None], 3, 2)
+        if self.first_channel:
+            img = np.moveaxis(img, 2, 0)
 
         X = img
         y = 0. if index in self.ng_idxes else 1
