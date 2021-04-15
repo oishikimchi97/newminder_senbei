@@ -221,7 +221,7 @@ def main():
 
             for epoch in range(seg_args.num_epoch):
                 for batch_idx, batch in enumerate(seg_train_loader):
-                    batch = tuple(t.to_device(device) for t in batch)
+                    batch = tuple(t.to(device) for t in batch)
                     seg_x, seg_y = batch
                     pred_y = my_model(seg_x)
 
@@ -246,7 +246,7 @@ def main():
                 my_model.eval()
 
                 for batch_idx, batch in enumerate(seg_val_loader):
-                    batch = tuple(t.to_device(device) for t in batch)
+                    batch = tuple(t.to(device) for t in batch)
                     seg_x, seg_y = batch
                     pred_y = my_model(seg_x)
 
@@ -309,7 +309,7 @@ def main():
 
                 for epoch in range(cls_args.num_epoch):
                     for batch_idx, batch in enumerate(cls_train_loader):
-                        batch = tuple(t.to_device(device) for t in batch)
+                        batch = tuple(t.to(device) for t in batch)
                         cls_x, cls_y = batch
                         pred_y = my_model(cls_x)
 
@@ -332,7 +332,7 @@ def main():
                     my_model.eval()
 
                     for batch_idx, batch in enumerate(cls_val_loader):
-                        batch = tuple(t.to_device(device) for t in batch)
+                        batch = tuple(t.to(device) for t in batch)
                         cls_x, cls_y = batch
                         pred_y = my_model(cls_x)
 
