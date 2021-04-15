@@ -312,10 +312,11 @@ def main():
                     for batch_idx, batch in enumerate(cls_train_loader):
                         batch = tuple(t.to(device) for t in batch)
                         cls_x, cls_y = batch
-                        pred_y = my_model(cls_x)
 
-                        loss = bce(pred_y, cls_y)
                         optimizer.zero_grad()
+
+                        pred_y = my_model(cls_x)
+                        loss = bce(pred_y, cls_y)
                         loss.backward()
                         optimizer.step()
 
