@@ -220,7 +220,9 @@ def main():
                                   swa_lr=seg_args.swa_lr)
 
             for epoch in range(seg_args.num_epoch):
-                for batch_idx, (seg_x, seg_y) in enumerate(seg_train_loader):
+                for batch_idx, batch in enumerate(seg_train_loader):
+                    batch = tuple(t.to_device(device) for t in batch)
+                    seg_x, seg_y = batch
                     pred_y = my_model(seg_x)
 
                     loss = bce(pred_y, seg_y)
@@ -243,7 +245,9 @@ def main():
 
                 my_model.eval()
 
-                for batch_idx, (seg_x, seg_y) in enumerate(seg_val_loader):
+                for batch_idx, batch in enumerate(seg_val_loader):
+                    batch = tuple(t.to_device(device) for t in batch)
+                    seg_x, seg_y = batch
                     pred_y = my_model(seg_x)
 
                     loss = bce(pred_y, seg_y)
@@ -304,7 +308,9 @@ def main():
                                       swa_lr=cls_args.swa_lr)
 
                 for epoch in range(cls_args.num_epoch):
-                    for batch_idx, (cls_x, cls_y) in enumerate(cls_train_loader):
+                    for batch_idx, batch in enumerate(cls_train_loader):
+                        batch = tuple(t.to_device(device) for t in batch)
+                        cls_x, cls_y = batch
                         pred_y = my_model(cls_x)
 
                         loss = bce(pred_y, cls_y)
@@ -325,7 +331,9 @@ def main():
 
                     my_model.eval()
 
-                    for batch_idx, (cls_x, cls_y) in enumerate(cls_val_loader):
+                    for batch_idx, batch in enumerate(cls_val_loader):
+                        batch = tuple(t.to_device(device) for t in batch)
+                        cls_x, cls_y = batch
                         pred_y = my_model(cls_x)
 
                         loss = bce(pred_y, cls_y)
