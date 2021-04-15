@@ -138,13 +138,13 @@ def main():
     parser.add_argument(
         "--train_dir",
         default="/train_dir",
-        type=int,
+        type=str,
         help="the train data directory. it consists of the both ng and ok directorys, and they have img and mask folders."
     )
     parser.add_argument(
         "--val_dir",
         default="/val_dir",
-        type=int,
+        type=str,
         help="the validation data directory. it consists of the both ng and ok directorys, and they have img and mask folders."
     )
 
