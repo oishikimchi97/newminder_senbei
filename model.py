@@ -10,14 +10,12 @@ class ConvBlock(nn.Module):
 
         self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride,
                                 padding=padding, bias=bias)
-        self.batch = nn.BatchNorm2d
-        self.activation = nn.LeakyReLU(negative_slope=0.1)
-
-        self.batch_norm = batch_norm
+        self.activation = nn.LeakyReLU(negative_slope=0.1) if activation else None
+        self.batch_norm = nn.BatchNorm2d(out_channels) if batch_norm else None
 
     def forward(self, x):
         y = self.conv2d(x)
-        y = self.batch(y) if self.batch_norm else y
+        y = self.batch_norm(y) if self.batch_norm else y
         y = self.activation(y) if self.activation else y
         return y
 
@@ -34,6 +32,7 @@ class ResBlock(nn.Module):
         y = self.conv2(y)
         y = torch.sum([x, y])
         return y
+
 
 class DownConv(nn.Module):
     def __init__(self, input_channel, input_size, output_size):
@@ -93,9 +92,9 @@ class DownconvUnet(nn.Module):
             nn.AdaptiveAvgPool2d(1),
             Flatten(),
             nn.Dropout(p=0.2),
-            nn.Linear(encoder_channel, int( encoder_channel / 2)),
+            nn.Linear(encoder_channel, int(encoder_channel / 2)),
             nn.Dropout(p=0.2),
-            nn.Linear(int( encoder_channel / 2), cls_classes)
+            nn.Linear(int(encoder_channel / 2), cls_classes)
         )
 
         self._mode = mode  # 0: seg, cls mode, 2: seg mode, 3: cls mode
