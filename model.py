@@ -4,9 +4,12 @@ import segmentation_models_pytorch as smp
 
 
 class ConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride, padding=0, bias=False, activation=True,
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding=None, bias=False, activation=True,
                  batch_norm=True):
         super().__init__()
+
+        if not padding:
+            padding = kernel_size // 2
 
         self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride,
                                 padding=padding, bias=bias)
@@ -24,8 +27,8 @@ class ResBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
 
-        self.conv1 = ConvBlock(in_channels, out_channels, kernel_size=3, stride=1, activation=True, batch_norm=True)
-        self.conv2 = ConvBlock(in_channels, out_channels, kernel_size=3, stride=1, activation=False, batch_norm=True)
+        self.conv1 = ConvBlock(in_channels, out_channels, kernel_size=3, padding=1, stride=1, activation=True, batch_norm=True)
+        self.conv2 = ConvBlock(in_channels, out_channels, kernel_size=3, padding=1, stride=1, activation=False, batch_norm=True)
 
     def forward(self, x):
         y = self.conv1(x)
